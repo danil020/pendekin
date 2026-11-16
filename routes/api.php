@@ -13,6 +13,8 @@ Route::post('/logout', [AuthController::class, 'logout'])
 Route::middleware('auth:sanctum')->group(function (): void {
     Route::post('/links', [LinkController::class, 'store'])->name('api.links.store');
     Route::get('/links', [LinkController::class, 'index'])->name('api.links.index');
+    Route::get('/links/{link}/stats', [LinkController::class, 'stats'])
+        ->name('api.links.stats');
     Route::patch('/links/{link}/deactivate', [LinkController::class, 'deactivate'])
         ->name('api.links.deactivate');
 });

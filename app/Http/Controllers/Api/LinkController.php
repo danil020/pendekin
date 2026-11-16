@@ -3,8 +3,10 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\LinkStatsRequest;
 use App\Http\Requests\StoreLinkRequest;
 use App\Http\Resources\LinkResource;
+use App\Http\Resources\LinkStatsResource;
 use App\Models\Link;
 use App\Services\LinkService;
 use Illuminate\Http\JsonResponse;
@@ -37,5 +39,18 @@ class LinkController extends Controller
         $link->update(['is_active' => false]);
 
         return LinkResource::make($link->refresh());
+    }
+
+    public function stats(LinkStatsRequest $request, Link $link): LinkStatsResource
+    {
+        Gate::authorize('viewStats', $link);
+
+        $filters = $request->validated();
+
+        return LinkStatsResource::make($this->linkService->dailyStats(
+            $link,
+            $filters['from'] ?? null,
+            $filters['to'] ?? null,
+        ));
     }
 }
