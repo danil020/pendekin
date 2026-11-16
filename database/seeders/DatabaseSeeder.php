@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 
 class DatabaseSeeder extends Seeder
 {
@@ -15,11 +16,37 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $user = User::firstOrCreate(
+            ['email' => 'demo@example.com'],
+            ['name' => 'Pengguna Demo', 'password' => 'password'],
+        );
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
-        ]);
+        $links = [
+            [
+                'code' => 'aktif1',
+                'original_url' => 'https://example.com/aktif',
+                'is_active' => true,
+                'expires_at' => null,
+            ],
+            [
+                'code' => 'nonaktif',
+                'original_url' => 'https://example.com/nonaktif',
+                'is_active' => false,
+                'expires_at' => null,
+            ],
+            [
+                'code' => 'kedaluwarsa',
+                'original_url' => 'https://example.com/kedaluwarsa',
+                'is_active' => true,
+                'expires_at' => Carbon::now()->subDay(),
+            ],
+        ];
+
+        foreach ($links as $link) {
+            $user->links()->updateOrCreate(
+                ['code' => $link['code']],
+                [...$link, 'user_id' => $user->id, 'is_alias' => false],
+            );
+        }
     }
 }
