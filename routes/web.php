@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\LinkRedirectController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Session\Middleware\StartSession;
 use Illuminate\Support\Facades\DB;
@@ -29,3 +30,7 @@ Route::get('/health', function () {
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/{code}', LinkRedirectController::class)
+    ->where('code', '[A-Za-z0-9-]+')
+    ->name('links.redirect');

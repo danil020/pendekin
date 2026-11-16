@@ -7,7 +7,7 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class StoreLinkRequest extends FormRequest
 {
-    private const array RESERVED_ALIASES = [
+    private const RESERVED_ALIASES = [
         'health',
         'api',
         'login',
