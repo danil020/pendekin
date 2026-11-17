@@ -3,24 +3,35 @@
 use App\Http\Controllers\LinkRedirectController;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
+use Predis\Connection\ConnectionException as PredisConnectionException;
+use Throwable;
 
 Route::get('/health', function () {
+    $databaseConnected = true;
+
     try {
         DB::connection()->getPdo();
     } catch (PDOException) {
-        return response()->json([
-            'status' => 'error',
-            'database' => 'disconnected',
-        ], 503);
+        $databaseConnected = false;
+    }
+
+    $cacheStatus = 'connected';
+
+    try {
+        Cache::get('health:check');
+    } catch (PredisConnectionException | PDOException | Throwable) {
+        $cacheStatus = 'disconnected';
     }
 
     return response()->json([
-        'status' => 'ok',
-        'database' => 'connected',
-    ]);
+        'status' => $databaseConnected ? 'ok' : 'error',
+        'database' => $databaseConnected ? 'connected' : 'disconnected',
+        'cache' => $cacheStatus,
+    ], $databaseConnected ? 200 : 503);
 })->withoutMiddleware([
     PreventRequestForgery::class,
     StartSession::class,
