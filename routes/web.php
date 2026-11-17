@@ -8,7 +8,6 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Route;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use Predis\Connection\ConnectionException as PredisConnectionException;
-use Throwable;
 
 Route::get('/health', function () {
     $databaseConnected = true;
