@@ -1,0 +1,95 @@
+﻿services:
+  app:
+    build:
+      context: .
+      target: runtime
+    image: pendekin:runtime
+    env_file:
+      - .env
+    environment:
+      APP_NAME: Pendekin
+      APP_ENV: production
+      APP_DEBUG: "false"
+      APP_URL: http://localhost
+
+      DB_CONNECTION: mysql
+      DB_HOST: db
+      DB_PORT: "3306"
+      DB_DATABASE: pendekin
+      DB_USERNAME: pendekin
+      DB_PASSWORD: rahasia123
+
+      REDIS_CLIENT: phpredis
+      REDIS_HOST: redis
+      REDIS_PORT: "6379"
+      REDIS_PASSWORD: ""
+      CACHE_STORE: redis
+
+      SESSION_DRIVER: file
+      QUEUE_CONNECTION: sync
+
+    ports:
+      - "80:8000"
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    networks:
+      - public
+      - internal
+
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: pendekin
+      MYSQL_USER: pendekin
+      MYSQL_PASSWORD: rahasia123
+      MYSQL_ROOT_PASSWORD: rootrahasia
+
+    volumes:
+      - db_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    networks:
+      - internal
+
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+
+    healthcheck:
+      test:
+        - CMD
+        - redis-cli
+        - ping
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+    networks:
+      - internal
+
+    restart: unless-stopped
+
+volumes:
+  db_data:
+
+networks:
+  public:
+  internal:
+    internal: true
+
