@@ -8,11 +8,15 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
 class LinkService
 {
+    private const LINK_CACHE_TTL_SECONDS = 3600;
+
     /**
      * @param  array{original_url: string, alias?: string|null, expires_at?: string|null}  $data
      */
@@ -31,19 +35,43 @@ class LinkService
 
     public function resolve(string $code): RedirectResponse|JsonResponse
     {
-        $link = Link::query()->where('code', $code)->first();
+        $cacheKey = "link:{$code}";
+        $linkData = Cache::remember($cacheKey, self::LINK_CACHE_TTL_SECONDS, function () use ($code): ?array {
+            $link = Link::query()
+                ->where('code', $code)
+                ->first(['id', 'original_url', 'is_active', 'expires_at']);
 
-        if ($link === null) {
+            if ($link === null) {
+                return null;
+            }
+
+            return [
+                'id' => $link->id,
+                'original_url' => $link->original_url,
+                'is_active' => $link->is_active,
+                'expires_at' => $link->expires_at?->toIso8601String(),
+            ];
+        });
+
+        if ($linkData === null) {
+            Cache::forget($cacheKey);
+
             return response()->json(['message' => 'Link tidak ditemukan.'], 404);
         }
 
-        if (! $link->is_active || ($link->expires_at !== null && $link->expires_at->lt(now()))) {
+        $this->applyExpiryAwareCacheTtl($cacheKey, $linkData);
+
+        $expiresAt = $linkData['expires_at'] === null
+            ? null
+            : Carbon::parse($linkData['expires_at']);
+
+        if (! $linkData['is_active'] || ($expiresAt !== null && $expiresAt->lt(now()))) {
             return response()->json(['message' => 'Link tidak aktif atau kedaluwarsa.'], 410);
         }
 
-        $this->recordClick($link);
+        $this->recordClick($linkData['id']);
 
-        return redirect()->to($link->original_url, 302);
+        return redirect()->to($linkData['original_url'], 302);
     }
 
     /**
@@ -75,13 +103,13 @@ class LinkService
         return $code;
     }
 
-    private function recordClick(Link $link): void
+    private function recordClick(int $linkId): void
     {
         $now = now();
 
         LinkDailyStat::query()->upsert(
             [[
-                'link_id' => $link->id,
+                'link_id' => $linkId,
                 'date' => $now->toDateString(),
                 'clicks' => 1,
                 'created_at' => $now,
@@ -93,5 +121,27 @@ class LinkService
                 'updated_at' => DB::raw('CURRENT_TIMESTAMP'),
             ],
         );
+    }
+
+    /**
+     * @param  array{id: int, original_url: string, is_active: bool, expires_at: string|null}  $linkData
+     */
+    private function applyExpiryAwareCacheTtl(string $cacheKey, array $linkData): void
+    {
+        if ($linkData['expires_at'] === null) {
+            return;
+        }
+
+        $secondsRemaining = Carbon::parse($linkData['expires_at'])->getTimestamp() - now()->getTimestamp();
+
+        if ($secondsRemaining <= 0) {
+            Cache::forget($cacheKey);
+
+            return;
+        }
+
+        if ($secondsRemaining < self::LINK_CACHE_TTL_SECONDS) {
+            Cache::put($cacheKey, $linkData, $secondsRemaining);
+        }
     }
 }

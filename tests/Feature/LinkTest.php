@@ -4,6 +4,8 @@ use App\Models\Link;
 use App\Models\LinkDailyStat;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Laravel\Sanctum\Sanctum;
 
 uses(RefreshDatabase::class);
@@ -198,4 +200,56 @@ test('stats can be filtered by an inclusive date range', function () {
         ->assertOk()
         ->assertJsonPath('data.total_clicks', 3)
         ->assertJsonCount(1, 'data.daily_stats');
+});
+
+test('deactivation invalidates the cached redirect immediately', function () {
+    $user = User::factory()->create();
+    $link = Link::factory()->for($user)->create(['code' => 'cached-off']);
+    $cacheKey = 'link:cached-off';
+
+    $this->get('/cached-off')->assertRedirect();
+    expect(Cache::has($cacheKey))->toBeTrue();
+
+    Sanctum::actingAs($user);
+    $this->patchJson("/api/links/{$link->id}/deactivate")->assertOk();
+
+    expect(Cache::has($cacheKey))->toBeFalse();
+
+    $this->getJson('/cached-off')->assertGone();
+});
+
+test('a cached link avoids querying the links table on subsequent redirects', function () {
+    Link::factory()->create(['code' => 'cache-hit']);
+    $this->get('/cache-hit')->assertRedirect();
+
+    $connection = DB::connection();
+    $connection->flushQueryLog();
+    $connection->enableQueryLog();
+
+    $this->get('/cache-hit')->assertRedirect();
+
+    $linkQueries = collect($connection->getQueryLog())
+        ->filter(fn (array $query): bool => str_contains(strtolower($query['query']), 'from "links"'));
+
+    $connection->disableQueryLog();
+
+    expect($linkQueries)->toBeEmpty();
+});
+
+test('changing a link invalidates its cached redirect', function () {
+    $link = Link::factory()->create([
+        'code' => 'cache-change',
+        'original_url' => 'https://example.com/old',
+    ]);
+
+    $this->get('/cache-change')->assertRedirect('https://example.com/old');
+    $link->update(['original_url' => 'https://example.com/new']);
+
+    $this->get('/cache-change')->assertRedirect('https://example.com/new');
+});
+
+test('not found links are not cached', function () {
+    $this->getJson('/not-cached')->assertNotFound();
+
+    expect(Cache::has('link:not-cached'))->toBeFalse();
 });
