@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Str;
 
 class DatabaseSeeder extends Seeder
 {
@@ -19,13 +20,13 @@ class DatabaseSeeder extends Seeder
     {
         $user = User::firstOrCreate(
             ['email' => 'demo@example.com'],
-            ['name' => 'Pengguna Demo', 'password' => 'password'],
+            ['name' => 'Pengguna Demo', 'password' => Str::password(48)],
         );
 
         $links = [
             [
-                'code' => 'aktif1',
-                'original_url' => 'https://example.com/aktif',
+                'code' => 'demo01',
+                'original_url' => 'https://example.com/demo',
                 'is_alias' => false,
                 'is_active' => true,
                 'expires_at' => null,
@@ -63,7 +64,7 @@ class DatabaseSeeder extends Seeder
         }
 
         $sampleClicks = [
-            'aktif1' => [9, 7, 10, 5, 12, 8, 6],
+            'demo01' => [9, 7, 10, 5, 12, 8, 6],
             'portfolio' => [21, 18, 24, 16, 19, 14, 10],
             'nonaktif' => [4, 3, 2, 1],
             'kedaluwarsa' => [8, 6, 5],

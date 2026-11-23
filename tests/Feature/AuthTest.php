@@ -1,15 +1,18 @@
 <?php
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Str;
 
 uses(RefreshDatabase::class);
 
 test('registering and logging in issue revocable sanctum tokens', function () {
+    $password = Str::password(12);
+
     $registration = $this->postJson('/api/register', [
         'name' => 'Pengguna Tes',
         'email' => 'pengguna@example.com',
-        'password' => 'password123',
-        'password_confirmation' => 'password123',
+        'password' => $password,
+        'password_confirmation' => $password,
     ]);
 
     $registration->assertCreated()
@@ -25,7 +28,7 @@ test('registering and logging in issue revocable sanctum tokens', function () {
 
     $login = $this->postJson('/api/login', [
         'email' => 'pengguna@example.com',
-        'password' => 'password123',
+        'password' => $password,
     ]);
 
     $login->assertOk()->assertJsonPath('data.email', 'pengguna@example.com');

@@ -22,7 +22,7 @@ Route::get('/health', function () {
 
     try {
         Cache::get('health:check');
-    } catch (PredisConnectionException | PDOException | Throwable) {
+    } catch (PredisConnectionException| PDOException) {
         $cacheStatus = 'disconnected';
     }
 
