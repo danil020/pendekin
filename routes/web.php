@@ -22,7 +22,7 @@ Route::get('/health', function () {
 
     try {
         Cache::get('health:check');
-    } catch (PredisConnectionException| PDOException) {
+    } catch (PredisConnectionException|PDOException) {
         $cacheStatus = 'disconnected';
     }
 
@@ -38,7 +38,7 @@ Route::get('/health', function () {
 ])->name('health');
 
 Route::get('/', function () {
-    return view('welcome');
+    return view('app');
 });
 
 Route::get('/{code}', LinkRedirectController::class)
