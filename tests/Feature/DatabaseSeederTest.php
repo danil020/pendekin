@@ -17,8 +17,14 @@ test('database seeder creates repeatable demo links and click stats', function (
         'is_alias' => true,
         'is_active' => true,
     ]);
+    $this->assertDatabaseHas('links', [
+        'code' => 'demo01',
+        'is_alias' => false,
+        'is_active' => true,
+        'expires_at' => null,
+    ]);
 
-    $activeLink = Link::query()->where('code', 'aktif1')->firstOrFail();
+    $activeLink = Link::query()->where('code', 'demo01')->firstOrFail();
 
     $this->assertDatabaseHas('link_daily_stats', [
         'link_id' => $activeLink->id,
